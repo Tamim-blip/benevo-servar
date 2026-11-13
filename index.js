@@ -92,6 +92,13 @@ app.get("/manage-events/:email", async(req, res) => {
 })
 
 
+app.delete("/manage-events/:id", async(req, res) => {
+  const id = req.params.id
+  const result = await createEvents.deleteOne({_id : new ObjectId(id)})
+  res.send(result)
+})
+
+
 
 app.get("/events/:id", async(req, res) => {
 
@@ -114,6 +121,29 @@ app.get("/joined-events/:email", async(req, res) => {
   const result = await joinEvents.find({join_user_email : email}).toArray()
   res.send(result)
 })
+
+
+app.get("/events-detail/:id", async(req, res) => {
+  const id= req.params.id
+  const result = await joinEvents.findOne({_id : new ObjectId(id)})
+  res.send(result)
+})
+
+
+app.delete('/joined-events/:id', async(req, res) =>{
+
+  const id = req.params.id
+  const result = await joinEvents.deleteOne({_id : new ObjectId(id)})
+  res.send(result)
+})
+
+// app.get("/joined-events/:eventType", async(req, res) => {
+
+//   const eventType = req.params.eventType
+  
+//   const result = await joinEvents.find({eventType : eventType}).toArray()
+//   res.send(result)
+// })
 
 app.listen(PORT, () => {
     console.log("Backend is running on port", PORT)
