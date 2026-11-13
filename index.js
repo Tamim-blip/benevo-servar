@@ -31,6 +31,65 @@ app.get("/", (req, res) => {
     res.send("Hello world")
 })
 
+
+
+app.post("/create-events", async(req, res) => {
+
+    const allData = req.body
+    const result = await createEvents.insertOne(allData)
+    res.send(result)
+})
+
+
+app.get("/recent-events", async (req, res) => {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+
+    const events = await createEvents
+      .find({
+        eventDate: { $gte: today },
+      })
+      .sort({ eventDate: 1 })
+      .toArray();
+
+    res.status(200).send(events);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to fetch recent events",
+    });
+  }
+});
+
+
+app.get("/recent-upcoming-events", async (req, res) => {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+
+    const events = await createEvents
+      .find({
+        eventDate: { $gte: today },
+      })
+      .sort({ eventDate: 1 })
+      .limit(6)
+      .toArray();
+
+    res.status(200).send(events);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to fetch recent events",
+    });
+  }
+});
+
+
+
+app.get("/manage-events/:email", async(req, res) => {
+
+  const email = req.params.email
+  const result = await createEvents.find({email : email}).toArray()
+  res.send(result)
+})
+
 app.listen(PORT, () => {
     console.log("Backend is running on port", PORT)
 })
