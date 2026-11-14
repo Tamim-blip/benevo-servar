@@ -100,6 +100,20 @@ app.delete("/manage-events/:id", async(req, res) => {
 
 
 
+app.patch("/manage-events/:id", async(req, res) => {
+  const id = req.params.id
+   const updatedData = req.body;
+
+  const result = await createEvents.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: updatedData }
+  );
+
+  res.send(result)
+})
+
+
+
 app.get("/events/:id", async(req, res) => {
 
   const id = req.params.id
@@ -109,11 +123,41 @@ app.get("/events/:id", async(req, res) => {
 })
 
 
-app.post("/joined-events", async(req, res) => {
-  const allData = req.body
-  const result = await joinEvents.insertOne(allData)
-  res.send(result)
-})
+app.post("/joined-events", async (req, res) => {
+  try {
+    const allData = req.body;
+
+    // The frontend strips _id before posting, so there is no "id" field in the
+    // body. Identify the event by its own fields (title, type, location, date,
+    // organizer email) instead — same user + same event = duplicate join.
+    const existingUser = await joinEvents.findOne({
+      title: allData.title,
+      eventType: allData.eventType,
+      location: allData.location,
+      eventDate: allData.eventDate,
+      email: allData.email,
+      join_user_email: allData.join_user_email,
+    });
+
+    if (existingUser) {
+      return res.status(409).send({
+        message: "You have already joined this event!",
+      });
+    }
+
+    // If not joined, insert the data
+    const result = await joinEvents.insertOne(allData);
+
+    res.status(201).send(result);
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).send({
+      message: "Internal server error",
+    });
+  }
+});
 
 
 app.get("/joined-events/:email", async(req, res) => {
