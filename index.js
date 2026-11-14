@@ -2,6 +2,7 @@ import 'dotenv/config'
 import express from "express"
 import cors from "cors"
 import { MongoClient, ObjectId } from 'mongodb';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -28,13 +29,38 @@ export async function connectToMongoDB() {
   const createEvents = db.collection("created-events")
   const joinEvents = db.collection("joined-events")
 
+
+
+  const verifyApi = async(req, res, next) => {
+    const authHeader = req.headers.authorization
+
+    if(!authHeader){
+      res.status(401).send({message : "Unauthorized"})
+    }
+
+    const token = authHeader.split(" ")[1]
+    
+
+    if(!token){
+      res.status(401).send({message : "Unauthorized"})
+    }
+
+    const JWKS = createRemoteJWKSet( 
+      new URL(`${process.env.JWT_BASE_URL}/api/auth/jwks`) )
+
+    const { payload } = await jwtVerify(token, JWKS)
+
+    next()
+
+  }
+
 app.get("/", (req, res) => {
     res.send("Hello world")
 })
 
 
 
-app.post("/create-events", async(req, res) => {
+app.post("/create-events", verifyApi, async(req, res) => {
 
     const allData = req.body
     const result = await createEvents.insertOne(allData)
@@ -62,6 +88,8 @@ app.get("/recent-events", async (req, res) => {
 });
 
 
+
+
 app.get("/recent-upcoming-events", async (req, res) => {
   try {
     const today = new Date().toISOString().split("T")[0];
@@ -84,7 +112,7 @@ app.get("/recent-upcoming-events", async (req, res) => {
 
 
 
-app.get("/manage-events/:email", async(req, res) => {
+app.get("/manage-events/:email", verifyApi, async(req, res) => {
 
   const email = req.params.email
   const result = await createEvents.find({email : email}).toArray()
@@ -92,7 +120,7 @@ app.get("/manage-events/:email", async(req, res) => {
 })
 
 
-app.delete("/manage-events/:id", async(req, res) => {
+app.delete("/manage-events/:id", verifyApi, async(req, res) => {
   const id = req.params.id
   const result = await createEvents.deleteOne({_id : new ObjectId(id)})
   res.send(result)
@@ -100,7 +128,7 @@ app.delete("/manage-events/:id", async(req, res) => {
 
 
 
-app.patch("/manage-events/:id", async(req, res) => {
+app.patch("/manage-events/:id", verifyApi, async(req, res) => {
   const id = req.params.id
    const updatedData = req.body;
 
@@ -123,7 +151,7 @@ app.get("/events/:id", async(req, res) => {
 })
 
 
-app.post("/joined-events", async (req, res) => {
+app.post("/joined-events", verifyApi, async (req, res) => {
   try {
     const allData = req.body;
 
@@ -160,7 +188,7 @@ app.post("/joined-events", async (req, res) => {
 });
 
 
-app.get("/joined-events/:email", async(req, res) => {
+app.get("/joined-events/:email", verifyApi, async(req, res) => {
   const email = req.params.email
   const result = await joinEvents.find({join_user_email : email}).toArray()
   res.send(result)
@@ -174,21 +202,17 @@ app.get("/events-detail/:id", async(req, res) => {
 })
 
 
-app.delete('/joined-events/:id', async(req, res) =>{
+app.delete('/joined-events/:id', verifyApi,  async(req, res) =>{
 
   const id = req.params.id
   const result = await joinEvents.deleteOne({_id : new ObjectId(id)})
   res.send(result)
 })
 
-// app.get("/joined-events/:eventType", async(req, res) => {
 
-//   const eventType = req.params.eventType
-  
-//   const result = await joinEvents.find({eventType : eventType}).toArray()
-//   res.send(result)
-// })
 
 app.listen(PORT, () => {
     console.log("Backend is running on port", PORT)
 })
+
+export default app
